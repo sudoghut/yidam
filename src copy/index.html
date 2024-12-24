@@ -23,32 +23,11 @@
         const send = document.getElementById('send');
         const ws = new WebSocket('ws://localhost:3000/ws');
 
-        let currentMessage = null;
-
         ws.onmessage = function(event) {
-            const data = event.data;
-            console.log(data);
-            
-            if (data === "[START]") {
-                // Start of a new message
-                currentMessage = document.createElement('div');
-                currentMessage.textContent = 'LLM: ';
-                chat.appendChild(currentMessage);
-                console.log("In start");
-                console.log(currentMessage.textContent);
-            } else if (data === "[END]") {
-                // End of the current message
-                currentMessage = null;
-                console.log("In end");
-                console.log(currentMessage.textContent);
-            } else {
-                // Append to the current message
-                if (currentMessage) {
-                    currentMessage.textContent += data;
-                    chat.scrollTop = chat.scrollHeight;
-                    console.log(currentMessage.textContent);
-                }
-            }
+            const message = document.createElement('div');
+            message.textContent = 'LLM: ' + event.data;
+            chat.appendChild(message);
+            chat.scrollTop = chat.scrollHeight;
         };
 
         function sendMessage() {

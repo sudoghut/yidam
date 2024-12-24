@@ -51,9 +51,6 @@ async fn websocket_handler(
     ws.on_upgrade(|socket| handle_socket(socket, state))
 }
 
-use tokio::sync::mpsc;
-
-
 async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
     while let Some(Ok(msg)) = socket.recv().await {
         if let Message::Text(text) = msg {
@@ -74,40 +71,34 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
                 break;
             }
 
-            let (tx, mut rx) = mpsc::channel::<String>(100);
-
-            // Spawn a task to call llm_caller
-            let llm_task = tokio::spawn(async move {
-                llm_caller(&full_context, tx).await
-            });
-
-            let mut full_response = String::new();
-
-            // Receive and send response chunks
-            while let Some(chunk) = rx.recv().await {
-                if chunk == "[END]" {
-                    break;
+            match llm_caller(&full_context).await {
+                Ok(response) => {
+                    println!("Response: {}", response);
+                    context.push(UserMessage {
+                        role: "assistant".to_string(),
+                        content: response.clone(),
+                    });
+                    if context.len() > 10 {
+                        context.remove(0);
+                        context.remove(0);
+                    }
+                    
+                    // Send the response in chunks
+                    for chunk in response.chars().collect::<Vec<char>>().chunks(10) {
+                        let chunk_str: String = chunk.iter().collect();
+                        if let Err(e) = socket.send(Message::Text(chunk_str)).await {
+                            eprintln!("Error sending message chunk: {}", e);
+                            break;
+                        }
+                    }
                 }
-                full_response.push_str(&chunk);
-                if let Err(e) = socket.send(Message::Text(chunk)).await {
-                    eprintln!("Error sending message chunk: {}", e);
-                    break;
+                Err(e) => {
+                    let error_msg = format!("Error: {}", e);
+                    if let Err(e) = socket.send(Message::Text(error_msg)).await {
+                        eprintln!("Error sending error message: {}", e);
+                        break;
+                    }
                 }
-            }
-
-            // Wait for llm_caller to complete
-            if let Err(e) = llm_task.await {
-                eprintln!("Error in llm_caller task: {:?}", e);
-            }
-
-            // Update context with the full response
-            context.push(UserMessage {
-                role: "assistant".to_string(),
-                content: full_response,
-            });
-            if context.len() > 10 {
-                context.remove(0);
-                context.remove(0);
             }
 
             // Send end token
@@ -119,7 +110,7 @@ async fn handle_socket(mut socket: WebSocket, state: Arc<AppState>) {
     }
 }
 
-pub async fn llm_caller(context: &str, tx: mpsc::Sender<String>) -> Result<(), Arc<dyn Error + Send + Sync>> {
+async fn llm_caller(context: &str) -> Result<String, Arc<dyn Error + Send + Sync>> {
     let client = Client::new();
     let url = "http://localhost:11434/api/chat";
 
@@ -139,6 +130,7 @@ pub async fn llm_caller(context: &str, tx: mpsc::Sender<String>) -> Result<(), A
         .map_err(|e| Arc::new(LlmError(e.to_string())) as Arc<dyn Error + Send + Sync>)?;
 
     if response.status().is_success() {
+        let mut full_response = String::new();
         while let Some(chunk) = response
             .chunk()
             .await
@@ -148,9 +140,10 @@ pub async fn llm_caller(context: &str, tx: mpsc::Sender<String>) -> Result<(), A
             for line in chunk_str.lines() {
                 if let Ok(json) = serde_json::from_str::<Value>(line) {
                     if let Some(response_part) = json["message"]["content"].as_str() {
-                        println!("Response part: {}", response_part);
-                        tx.send(response_part.to_string()).await
-                            .map_err(|e| Arc::new(LlmError(e.to_string())) as Arc<dyn Error + Send + Sync>)?;
+                        full_response.push_str(response_part);
+                        // return full_response;
+                        println!("Response part: {}", full_response.clone());
+                        return Ok(full_response);
                     } else {
                         eprintln!("Error parsing JSON: {}", line);
                     }
@@ -159,13 +152,11 @@ pub async fn llm_caller(context: &str, tx: mpsc::Sender<String>) -> Result<(), A
                 }
             }
         }
-        tx.send("[END]".to_string()).await
-            .map_err(|e| Arc::new(LlmError(e.to_string())) as Arc<dyn Error + Send + Sync>)?;
+        Ok(full_response + "[END]")
     } else {
-        return Err(Arc::new(LlmError(format!("HTTP error: {}", response.status()))));
+        Err(Arc::new(LlmError("Error in calling LLM".to_string()))
+            as Arc<dyn Error + Send + Sync>)
     }
-
-    Ok(())
 }
 
 async fn index_handler() -> impl IntoResponse {
