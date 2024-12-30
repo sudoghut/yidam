@@ -172,6 +172,11 @@ async fn index_handler() -> impl IntoResponse {
     Html(include_str!("index.html"))
 }
 
+// add iframe.html as /if
+async fn iframe_handler() -> impl IntoResponse {
+    Html(include_str!("iframe.html"))
+}
+
 #[tokio::main]
 async fn main() {
     let state = Arc::new(AppState {
@@ -181,6 +186,7 @@ async fn main() {
     let app = Router::new()
         .route("/", get(index_handler))
         .route("/ws", get(websocket_handler))
+        .route("/if", get(iframe_handler))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
