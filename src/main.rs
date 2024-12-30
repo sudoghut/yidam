@@ -127,7 +127,7 @@ pub async fn llm_caller(context: &str, tx: mpsc::Sender<String>) -> Result<(), A
         .map_err(|e| Arc::new(LlmError(e.to_string())) as Arc<dyn Error + Send + Sync>)?;
     println!("Context: {}", context);
     let body = json!({
-        "model": "qwen2.5:14b",
+        "model": "qwen2.5:1.5b",
         "messages": context_json["messages"]
     });
 
