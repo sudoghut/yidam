@@ -13,6 +13,7 @@ use std::error::Error;
 use std::fmt;
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use std::net::{IpAddr, UdpSocket};
 
 #[derive(Debug)]
 struct LlmError(String);
@@ -177,19 +178,41 @@ async fn iframe_handler() -> impl IntoResponse {
     Html(include_str!("iframe.html"))
 }
 
+fn get_local_ip() -> Option<IpAddr> {
+    let socket = match UdpSocket::bind("0.0.0.0:0") {
+        Ok(s) => s,
+        Err(_) => return None,
+    };
+
+    match socket.connect("8.8.8.8:80") {
+        Ok(()) => (),
+        Err(_) => return None,
+    };
+
+    match socket.local_addr() {
+        Ok(addr) => Some(addr.ip()),
+        Err(_) => None,
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let state = Arc::new(AppState {
         context: Mutex::new(Vec::new()),
     });
-
+    match get_local_ip() {
+        Some(ip) => println!("Local IP address: {}", ip),
+        None => println!("Couldn't get local IP address"),
+    }
     let app = Router::new()
         .route("/", get(index_handler))
         .route("/ws", get(websocket_handler))
         .route("/if", get(iframe_handler))
         .with_state(state);
-
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    println!("Listening on http://localhost:3000");
+    const PORT: u16 = 3000;
+    // get lan ip
+    
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", PORT)).await.unwrap();
+    println!("Please open http://localhost:{}?ip={}", PORT, get_local_ip().unwrap());
     axum::serve(listener, app).await.unwrap();
 }

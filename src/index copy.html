@@ -4,58 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LLM Chat</title>
-    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
         #chat { height: 400px; overflow-y: scroll; border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
         #input { width: 80%; padding: 5px; }
         #send { padding: 5px 10px; }
-        #qrcode { text-align: center; margin-bottom: 20px; }
-        #chatInterface { display: none; }
     </style>
 </head>
 <body>
     <h1>LLM Chat</h1>
-    <div id="qrcode"></div>
-    <button id="simulateScan">Simulate QR Code Scan</button>
-    <div id="chatInterface">
-        <div id="chat"></div>
-        <input type="text" id="input" placeholder="Type your message...">
-        <button id="send">Send</button>
-    </div>
+    <div id="chat"></div>
+    <input type="text" id="input" placeholder="Type your message...">
+    <button id="send">Send</button>
 
     <script>
         const chat = document.getElementById('chat');
         const input = document.getElementById('input');
         const send = document.getElementById('send');
-        const chatInterface = document.getElementById('chatInterface');
-        const simulateScan = document.getElementById('simulateScan');
-
-        // Generate QR code
-        const urlParams = new URLSearchParams(window.location.search);
-        const isChat = urlParams.get('interface');
-        const ip = urlParams.get('ip');
-        if (isChat === "chat") {
-            document.getElementById('qrcode').style.display = 'none';
-            simulateScan.style.display = 'none';
-            chatInterface.style.display = 'block';
-        }
-        const qrcode = new QRCode(document.getElementById("qrcode"), {
-            text: "http://" + ip + ":3000?ip=" + ip +"&interface=chat",
-            width: 256,
-            height: 256
-        });
-
-        // Simulate QR code scan
-        simulateScan.onclick = function() {
-            document.getElementById('qrcode').style.display = 'none';
-            simulateScan.style.display = 'none';
-            chatInterface.style.display = 'block';
-        };
-
         // get ip from the website?ip=xxx.xxx.xxx.xxx part
+        const ip = window.location.search.split('=')[1];
         const port = "3000";
+        // const ws = new WebSocket(`ws://${window.location.hostname}:3000/ws`);
         console.log(`${ip}:${port}`);
+        // use js to get the ip address of the server
+        
         const ws = new WebSocket(`ws://${ip}:${port}/ws`);
 
         let currentMessage = null;
@@ -65,15 +37,23 @@
             console.log(data);
             
             if (data === "[START]") {
+                // Start of a new message
                 currentMessage = document.createElement('div');
                 currentMessage.textContent = 'LLM: ';
                 chat.appendChild(currentMessage);
+                console.log("In start");
+                console.log(currentMessage.textContent);
             } else if (data === "[END]") {
+                // End of the current message
                 currentMessage = null;
+                console.log("In end");
+                console.log(currentMessage.textContent);
             } else {
+                // Append to the current message
                 if (currentMessage) {
                     currentMessage.textContent += data;
                     chat.scrollTop = chat.scrollHeight;
+                    console.log(currentMessage.textContent);
                 }
             }
         };
