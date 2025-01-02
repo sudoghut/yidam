@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seamless Page</title>
+    <title>Yidam</title>
     <style>
         body, html {
             margin: 0;
@@ -22,6 +22,25 @@
     </style>
 </head>
 <body>
-    <iframe src="http://192.168.86.93:8000/index.html?ip=192.168.86.93"></iframe>
+    <iframe id="iframe" src=""></iframe>
+    <script>
+        // Function to get query parameters from the URL
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        // Get the IP address from the 'ip' query parameter
+        const userIP = getQueryParam('ip');
+
+        // Set the iframe's src dynamically
+        const iframe = document.getElementById('iframe');
+        if (userIP) {
+            iframe.src = `http://localhost:5174?ip=${userIP}`;
+        } else {
+            iframe.src = 'http://localhost:5174'; // Default src
+        }
+    </script>
 </body>
+
 </html>

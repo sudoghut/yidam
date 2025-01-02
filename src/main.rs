@@ -213,6 +213,6 @@ async fn main() {
     // get lan ip
     
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", PORT)).await.unwrap();
-    println!("Please open http://localhost:{}?ip={}", PORT, get_local_ip().unwrap());
+    println!("Please open http://{}:{}/if?ip={}", get_local_ip().unwrap(), PORT, get_local_ip().unwrap());
     axum::serve(listener, app).await.unwrap();
 }
