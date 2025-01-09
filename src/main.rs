@@ -173,11 +173,6 @@ async fn index_handler() -> impl IntoResponse {
     Html(include_str!("index.html"))
 }
 
-// add iframe.html as /if
-async fn iframe_handler() -> impl IntoResponse {
-    Html(include_str!("iframe.html"))
-}
-
 fn get_local_ip() -> Option<IpAddr> {
     let socket = match UdpSocket::bind("0.0.0.0:0") {
         Ok(s) => s,
@@ -207,12 +202,11 @@ async fn main() {
     let app = Router::new()
         .route("/", get(index_handler))
         .route("/ws", get(websocket_handler))
-        .route("/if", get(iframe_handler))
         .with_state(state);
-    const PORT: u16 = 3000;
+    const PORT: u16 = 3001;
     // get lan ip
     
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", PORT)).await.unwrap();
-    println!("Please open http://{}:{}/if?ip={}", get_local_ip().unwrap(), PORT, get_local_ip().unwrap());
+    println!("Please open http://{}:{}", get_local_ip().unwrap(), PORT);
     axum::serve(listener, app).await.unwrap();
 }
