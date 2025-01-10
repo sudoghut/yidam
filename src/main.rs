@@ -3,7 +3,8 @@ use axum::{
         ws::{Message, WebSocket},
         State, WebSocketUpgrade,
     },
-    response::{Html, IntoResponse},
+    // response::{Html, IntoResponse},
+    response::IntoResponse,
     routing::get,
     Router,
 };
@@ -14,6 +15,8 @@ use std::fmt;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use std::net::{IpAddr, UdpSocket};
+use tower_http::services::ServeDir;
+use axum::routing::get_service;
 
 #[derive(Debug)]
 struct LlmError(String);
@@ -169,9 +172,9 @@ pub async fn llm_caller(context: &str, tx: mpsc::Sender<String>) -> Result<(), A
     Ok(())
 }
 
-async fn index_handler() -> impl IntoResponse {
-    Html(include_str!("index.html"))
-}
+// async fn index_handler() -> impl IntoResponse {
+//     Html(include_str!("index.html"))
+// }
 
 fn get_local_ip() -> Option<IpAddr> {
     let socket = match UdpSocket::bind("0.0.0.0:0") {
@@ -200,13 +203,14 @@ async fn main() {
         None => println!("Couldn't get local IP address"),
     }
     let app = Router::new()
-        .route("/", get(index_handler))
-        .route("/ws", get(websocket_handler))
-        .with_state(state);
+    // .route("/", get(index_handler))
+    .route("/ws", get(websocket_handler))
+    .nest_service("/web", get_service(ServeDir::new("./src/web")))
+    .with_state(state);
     const PORT: u16 = 3001;
     // get lan ip
     
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", PORT)).await.unwrap();
-    println!("Please open http://{}:{}", get_local_ip().unwrap(), PORT);
+    println!("Please open http://{}:{}/web/index.html", get_local_ip().unwrap(), PORT);
     axum::serve(listener, app).await.unwrap();
 }
