@@ -198,10 +198,10 @@ async fn main() {
     let state = Arc::new(AppState {
         context: Mutex::new(Vec::new()),
     });
-    match get_local_ip() {
-        Some(ip) => println!("Local IP address: {}", ip),
-        None => println!("Couldn't get local IP address"),
-    }
+    // match get_local_ip() {
+    //     Some(ip) => println!("Local IP address: {}", ip),
+    //     None => println!("Couldn't get local IP address"),
+    // }
     let app = Router::new()
     // .route("/", get(index_handler))
     .route("/ws", get(websocket_handler))
@@ -211,6 +211,6 @@ async fn main() {
     // get lan ip
     
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", PORT)).await.unwrap();
-    println!("Please open http://{}:{}/web/index.html", get_local_ip().unwrap(), PORT);
+    println!("Please open http://{}:{}/web", get_local_ip().unwrap(), PORT);
     axum::serve(listener, app).await.unwrap();
 }
