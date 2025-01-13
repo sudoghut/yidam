@@ -5,7 +5,7 @@ use axum::{
     },
     // response::{Html, IntoResponse},
     response::IntoResponse,
-    routing::get,
+    routing::{get, get_service},
     Router,
 };
 use reqwest::Client;
@@ -16,7 +16,6 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use std::net::{IpAddr, UdpSocket};
 use tower_http::services::ServeDir;
-use axum::routing::get_service;
 
 #[derive(Debug)]
 struct LlmError(String);
